@@ -1,10 +1,19 @@
-//agora vou criar um componente de resumo financeiro, que vai mostrar o total de receitas, despesas e saldo do mês, para isso vou criar um novo arquivo chamado summaryCard.tsx na pasta components/ui
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/theme';
 import Ionicons from '@expo/vector-icons/build/Ionicons';
 
-export function SummaryCard() {
+type SummaryCardProps = {
+    totalIncome: number;
+    totalExpense: number;
+    balance: number;
+};
+
+function formatCurrency(value: number): string {
+    return `R$ ${value.toFixed(2).replace('.', ',')}`;
+}
+
+export function SummaryCard({ totalIncome, totalExpense, balance }: SummaryCardProps) {
     return (
         <LinearGradient
             colors={[
@@ -20,21 +29,20 @@ export function SummaryCard() {
         >
             <View style={styles.cardContent}>
                 <View style={styles.header}>
-
                     <Text style={styles.subtitle}>Saldo Total</Text>
-                    <View style={styles.eyeButton}> {/* Placeholder para o ícone de mostrar/ocultar saldo */}
-                       <Ionicons name="eye-outline" size={16} color={Colors.icon} />
+                    <View style={styles.eyeButton}>
+                        <Ionicons name="eye-outline" size={16} color={Colors.icon} />
                     </View>
                 </View>
-                <Text style={styles.balance}>R$ 2.500,00</Text>
+                <Text style={styles.balance}>{formatCurrency(balance)}</Text>
                 <View style={styles.incomeAndExpenseContainer}>
                     <View style={styles.baseCard}>
                         <Text style={styles.subtitle}>Receitas</Text>
-                        <Text style={styles.title}>R$ 3.000,00</Text>
+                        <Text style={styles.title}>{formatCurrency(totalIncome)}</Text>
                     </View>
                     <View style={styles.baseCard}>
                         <Text style={styles.subtitle}>Despesas</Text>
-                        <Text style={styles.title}>R$ 500,00</Text>
+                        <Text style={styles.title}>{formatCurrency(totalExpense)}</Text>
                     </View>
                 </View>
             </View>
@@ -44,7 +52,6 @@ export function SummaryCard() {
 
 const styles = StyleSheet.create({
     card: {
-
         width: '100%',
         borderRadius: 28,
         padding: 24,
@@ -53,7 +60,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
-        elevation: 5, 
+        elevation: 5,
     },
     cardContent: {
         flexDirection: 'column',
@@ -69,25 +76,20 @@ const styles = StyleSheet.create({
         color: Colors.white,
         fontSize: 40,
         fontWeight: 'bold',
-        marginBottom: 20
-
+        marginBottom: 20,
     },
     baseCard: {
         width: '48%',
         borderRadius: 24,
         padding: 16,
-        // caixa transparente
         backgroundColor: 'rgba(255, 255, 255, 0.06)',
-        // borda sutil para destacar sobre o gradiente
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.12)',
-        // manter sombra leve se desejar profundidade
         shadowColor: Colors.cardShadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
         shadowRadius: 4,
         elevation: 1,
-
     },
     eyeButton: {
         width: 32,
@@ -101,7 +103,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
     },
-
     title: {
         color: Colors.white,
         fontSize: 18,
@@ -111,7 +112,5 @@ const styles = StyleSheet.create({
         color: Colors.textSecondary,
         fontSize: 20,
         fontWeight: '300',
-            
     },
-
 });

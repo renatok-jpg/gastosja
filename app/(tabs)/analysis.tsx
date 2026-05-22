@@ -204,6 +204,7 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         justifyContent: 'space-between',
         width: '100%',
+
     },
     miniCard: {
         width: CARD_WIDTH,
@@ -212,6 +213,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         height: 140,
         justifyContent: 'space-between',
+        
     },
     iconContainerBg: {
         width: 32,

@@ -111,14 +111,7 @@ export default function NewTransaction() {
                     </Text>
                 </Pressable>
 
-                <Pressable
-                    style={[styles.typeButton, transactionType === 'goal' && { backgroundColor: Colors.primary }]}
-                    onPress={() => setTransactionType('goal')}
-                >
-                    <Text style={[styles.typeButtonText, transactionType !== 'goal' && { color: Colors.textSecondary }]}>
-                        Meta
-                    </Text>
-                </Pressable>
+                   
             </View>
 
             {/* CAMPO DE VALOR */}

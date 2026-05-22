@@ -1,17 +1,94 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Pressable, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
+import { onGoalsChange, updateGoal, deleteGoal } from '../../services/goalService';
+import { Goal } from '../../types/database';
+import { useRouter } from 'expo-router';
 
 export default function MetasScreen() {
+  const router = useRouter();
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onGoalsChange((data) => {
+      setGoals(data);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const totalTarget = goals.reduce((sum, g) => sum + g.targetAmount, 0);
+  const totalCurrent = goals.reduce((sum, g) => sum + g.currentAmount, 0);
+  const percentage = totalTarget > 0 ? (totalCurrent / totalTarget) * 100 : 0;
+
+  const getIcon = (iconName?: string) => (iconName as any) || 'life-buoy';
+
+  const handleAddValue = (goal: Goal) => {
+    Alert.prompt(
+      'Adicionar valor',
+      `Quanto você quer adicionar à meta "${goal.title}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Adicionar',
+          onPress: (value?: string) => {
+            if (!value) return;
+            const num = parseFloat(value.replace(',', '.'));
+            if (isNaN(num) || num <= 0) {
+              Alert.alert('Valor inválido');
+              return;
+            }
+            const newAmount = goal.currentAmount + num;
+            updateGoal(goal.id, { currentAmount: newAmount })
+              .then(() => Alert.alert('Sucesso!', `Adicionado R$ ${num.toFixed(2).replace('.', ',')}`))
+              .catch((err) => Alert.alert('Erro', err.message));
+          },
+        },
+      ],
+      'plain-text'
+    );
+  };
+
+  const handleDelete = (goal: Goal) => {
+    Alert.alert('Deletar meta', `Tem certeza que deseja excluir "${goal.title}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Deletar',
+        style: 'destructive',
+        onPress: () => {
+          deleteGoal(goal.id).catch((err) => Alert.alert('Erro', err.message));
+        },
+      },
+    ]);
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Feather name="loader" size={32} color={Colors.primary} />
+          <Text style={{ color: Colors.textSecondary, marginTop: 12 }}>Carregando metas...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {/* Header */}
+        {/* Header estilizado */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Metas</Text>
+          <View>
+            <Text style={styles.headerTitle}>Metas</Text>
+            <Text style={styles.headerSubtitle}>{goals.length} meta{goals.length !== 1 ? 's' : ''} ativa{goals.length !== 1 ? 's' : ''}</Text>
+          </View>
+          <TouchableOpacity style={styles.fabButton} onPress={() => router.push('/add-goal')}>
+            <Feather name="plus" size={24} color={Colors.background} />
+          </TouchableOpacity>
         </View>
 
         {/* Card: Progresso Geral */}
@@ -22,258 +99,230 @@ export default function MetasScreen() {
           style={styles.mainCard}
         >
           <View style={styles.mainCardHeader}>
-            {/* feather é uma biblioteca. Aqui é um ícone de alvo,por isso target.Algo assim, sla */}
-            <Feather name="target" size={16} color={Colors.textSecondary} />
+            <View style={styles.iconCircle}>
+              <Feather name="target" size={18} color={Colors.primary} />
+            </View>
             <Text style={styles.mainCardSubtitle}>Progresso geral</Text>
           </View>
-          <Text style={styles.mainCardAmount}>R$ 350,00</Text>
-          <Text style={styles.mainCardDescription}>de R$ 5.000,00 em 1 metas</Text>
+          <Text style={styles.mainCardAmount}>
+            R$ {totalCurrent.toFixed(2).replace('.', ',')}
+          </Text>
+          <Text style={styles.mainCardDescription}>
+            de R$ {totalTarget.toFixed(2).replace('.', ',')} em {goals.length} meta{goals.length !== 1 ? 's' : ''}
+          </Text>
           
           <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: '7%' }]} />
+            <View style={[styles.progressBarFill, { width: `${Math.min(percentage, 100)}%` }]} />
           </View>
-          <Text style={styles.mainCardPercentage}>7.0% concluído</Text>
+          <View style={styles.progressFooter}>
+            <Text style={styles.mainCardPercentage}>{percentage.toFixed(1)}% concluído</Text>
+            {percentage >= 100 && <Text style={styles.completedBadge}>🎉 Meta batida!</Text>}
+          </View>
         </LinearGradient>
 
-
-
-        {/* Card: Meta Específica */}
-        <View style={styles.goalCard}>
-          <View style={styles.goalCardHeader}>
-            <View style={styles.iconWrapper}>
-              <Feather name="life-buoy" size={20} color={Colors.expense} />
+        {/* Estado vazio bonito */}
+        {goals.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconCircle}>
+              <Feather name="flag" size={40} color={Colors.textSecondary} />
             </View>
-            <View style={styles.goalCardTextContainer}>
-              <Text style={styles.goalCardTitle}>Reserva de Emergência</Text>
-              <Text style={styles.goalCardDate}>Meta dez. de 2026</Text>
-            </View>
-            <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>7%</Text>
-            </View>
+            <Text style={styles.emptyTitle}>Nenhuma meta ainda</Text>
+            <Text style={styles.emptySubtitle}>Crie sua primeira meta financeira e acompanhe seu progresso</Text>
+            <Pressable style={styles.emptyButton} onPress={() => router.push('/add-goal')}>
+              <Text style={styles.emptyButtonText}>Criar primeira meta</Text>
+            </Pressable>
           </View>
+        ) : (
+          goals.map((goal) => {
+            const goalPercentage = goal.targetAmount > 0 
+              ? (goal.currentAmount / goal.targetAmount) * 100 
+              : 0;
+            const isCompleted = goal.currentAmount >= goal.targetAmount;
+            
+            return (
+              <View key={goal.id} style={[styles.goalCard, isCompleted && styles.goalCardCompleted]}>
+                <View style={styles.goalCardHeader}>
+                  <View style={[styles.iconWrapper, isCompleted && { backgroundColor: 'rgba(74, 222, 128, 0.15)' }]}>
+                    <Feather name={getIcon(goal.icon)} size={20} color={isCompleted ? Colors.primary : Colors.expense} />
+                  </View>
+                  <View style={styles.goalCardTextContainer}>
+                    <Text style={styles.goalCardTitle}>{goal.title}</Text>
+                    <Text style={styles.goalCardDate}>
+                      Meta {goal.deadline.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}
+                    </Text>
+                  </View>
+                  <View style={[styles.badgeContainer, isCompleted && { backgroundColor: 'rgba(74, 222, 128, 0.2)' }]}>
+                    <Text style={[styles.badgeText, isCompleted && { color: Colors.primary }]}>
+                      {isCompleted ? '✓' : `${goalPercentage.toFixed(0)}%`}
+                    </Text>
+                  </View>
+                </View>
 
-          <View style={styles.goalProgressBarBackground}>
-            <View style={[styles.goalProgressBarFill, { width: '7%' }]} />
-          </View>
+                <View style={styles.goalProgressBarBackground}>
+                  <View style={[
+                    styles.goalProgressBarFill, 
+                    { width: `${Math.min(goalPercentage, 100)}%` },
+                    isCompleted && { backgroundColor: Colors.primary }
+                  ]} />
+                </View>
 
-          <View style={styles.goalCardFooter}>
-            <Text style={styles.goalAmountLeft}>R$ 350,00</Text>
-            <Text style={styles.goalAmountRight}>R$ 5.000,00</Text>
-          </View>
-        </View>
+                <View style={styles.goalCardFooter}>
+                  <Text style={styles.goalAmountLeft}>
+                    R$ {goal.currentAmount.toFixed(2).replace('.', ',')}
+                  </Text>
+                  <Text style={styles.goalAmountRight}>
+                    R$ {goal.targetAmount.toFixed(2).replace('.', ',')}
+                  </Text>
+                </View>
 
+                {/* Botões de ação */}
+                <View style={styles.actionRow}>
+                  <TouchableOpacity style={styles.actionButton} onPress={() => handleAddValue(goal)}>
+                    <Feather name="plus-circle" size={18} color={Colors.primary} />
+                    <Text style={styles.actionText}>Adicionar</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={[styles.actionButton, styles.actionButtonDanger]} onPress={() => handleDelete(goal)}>
+                    <Feather name="trash-2" size={18} color={Colors.expense} />
+                    <Text style={[styles.actionText, { color: Colors.expense }]}>Excluir</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })
+        )}
       </ScrollView>
-
-
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
+  container: { flex: 1, backgroundColor: Colors.background },
+  scrollContent: { paddingBottom: 150 },
+  
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 24, 
+    marginTop: 20, 
+    marginBottom: 24 
   },
-  scrollContent: {
-    paddingBottom: 150,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  headerTitle: { fontSize: 32, fontWeight: 'bold', color: Colors.textPrimary },
+  headerSubtitle: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
+  fabButton: { 
+    width: 52, 
+    height: 52, 
+    borderRadius: 26, 
+    backgroundColor: Colors.primary, 
+    justifyContent: 'center', 
     alignItems: 'center',
-    paddingHorizontal: 24,
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: Colors.textPrimary,
-  },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mainCard: {
-    marginHorizontal: 24,
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  mainCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  mainCardSubtitle: {
-    color: Colors.textSecondary,
-    marginLeft: 8,
-    fontSize: 14,
-  },
-  mainCardAmount: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.white,
-    marginBottom: 4,
-  },
-  mainCardDescription: {
-    color: Colors.textSecondary,
-    fontSize: 14,
-    marginBottom: 24,
-  },
-  progressBarBackground: {
-    height: 8,
-    backgroundColor: Colors.input,
-    borderRadius: 4,
-    marginBottom: 12,
-  },
-  progressBarFill: {
-    height: 8,
-    backgroundColor: Colors.primary,
-    borderRadius: 4,
-  },
-  mainCardPercentage: {
-    color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  goalCard: {
-    backgroundColor: Colors.card,
-    marginHorizontal: 24,
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: '#000',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  goalCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  iconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.iconBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  goalCardTextContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  goalCardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: Colors.textPrimary,
-  },
-  goalCardDate: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  badgeContainer: {
-    backgroundColor: Colors.surfaceElevated,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    color: Colors.textPrimary,
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  goalProgressBarBackground: {
-    height: 8,
-    backgroundColor: Colors.surfaceElevated,
-    borderRadius: 4,
-    marginBottom: 12,
-  },
-  goalProgressBarFill: {
-    height: 8,
-    backgroundColor: Colors.primary,
-    borderRadius: 4,
-  },
-  goalCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  goalAmountLeft: {
-    color: Colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  goalAmountRight: {
-    color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 110,
-    right: 24,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: Colors.primaryGlow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 24,
-    left: 24,
-    right: 24,
-    height: 72,
-    backgroundColor: Colors.card,
-    borderRadius: 36,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
+    shadowRadius: 10,
     elevation: 8,
   },
-  navItem: {
+
+  mainCard: { 
+    marginHorizontal: 24, 
+    borderRadius: 28, 
+    padding: 24, 
+    marginBottom: 24, 
+    borderWidth: 1, 
+    borderColor: Colors.border 
+  },
+  mainCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  iconCircle: { 
+    width: 36, 
+    height: 36, 
+    borderRadius: 18, 
+    backgroundColor: 'rgba(74, 222, 128, 0.15)', 
+    justifyContent: 'center', 
     alignItems: 'center',
-    justifyContent: 'center',
+    marginRight: 10,
   },
-  navText: {
-    fontSize: 10,
-    color: Colors.icon,
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  navTextActive: {
-    color: Colors.textPrimary,
-    fontWeight: 'bold',
-  },
-  navActiveIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
+  mainCardSubtitle: { color: Colors.textSecondary, fontSize: 14, fontWeight: '500' },
+  mainCardAmount: { fontSize: 36, fontWeight: 'bold', color: Colors.white, marginBottom: 4 },
+  mainCardDescription: { color: Colors.textSecondary, fontSize: 14, marginBottom: 24 },
+  progressBarBackground: { height: 10, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 5, marginBottom: 12 },
+  progressBarFill: { height: 10, backgroundColor: Colors.primary, borderRadius: 5 },
+  progressFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  mainCardPercentage: { color: Colors.textPrimary, fontSize: 14, fontWeight: '600' },
+  completedBadge: { color: Colors.primary, fontSize: 13, fontWeight: 'bold' },
+
+  emptyState: { alignItems: 'center', marginTop: 60, paddingHorizontal: 40 },
+  emptyIconCircle: { 
+    width: 80, 
+    height: 80, 
+    borderRadius: 40, 
+    backgroundColor: Colors.card, 
+    justifyContent: 'center', 
     alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
+  emptyTitle: { fontSize: 20, fontWeight: 'bold', color: Colors.white, marginBottom: 8 },
+  emptySubtitle: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  emptyButton: { 
+    backgroundColor: Colors.primary, 
+    paddingHorizontal: 24, 
+    paddingVertical: 14, 
+    borderRadius: 24,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  emptyButtonText: { color: Colors.background, fontWeight: 'bold', fontSize: 16 },
+
+  goalCard: { 
+    backgroundColor: Colors.card, 
+    marginHorizontal: 24, 
+    borderRadius: 24, 
+    padding: 20, 
+    borderWidth: 1, 
+    borderColor: Colors.border, 
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  goalCardCompleted: { borderColor: Colors.primary, borderWidth: 1.5 },
+  goalCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  iconWrapper: { width: 48, height: 48, borderRadius: 24, backgroundColor: Colors.iconBg, justifyContent: 'center', alignItems: 'center' },
+  goalCardTextContainer: { flex: 1, marginLeft: 12 },
+  goalCardTitle: { fontSize: 16, fontWeight: 'bold', color: Colors.textPrimary },
+  goalCardDate: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  badgeContainer: { backgroundColor: Colors.surfaceElevated, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  badgeText: { color: Colors.textPrimary, fontWeight: '700', fontSize: 12 },
+  goalProgressBarBackground: { height: 8, backgroundColor: Colors.surfaceElevated, borderRadius: 4, marginBottom: 12 },
+  goalProgressBarFill: { height: 8, backgroundColor: Colors.primary, borderRadius: 4 },
+  goalCardFooter: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  goalAmountLeft: { color: Colors.textSecondary, fontSize: 14, fontWeight: '500' },
+  goalAmountRight: { color: Colors.textPrimary, fontSize: 14, fontWeight: 'bold' },
+
+  actionRow: { 
+    flexDirection: 'row', 
+    borderTopWidth: 1, 
+    borderTopColor: Colors.border, 
+    paddingTop: 12,
+    gap: 12,
+  },
+  actionButton: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    backgroundColor: 'rgba(74, 222, 128, 0.08)', 
+    paddingVertical: 10, 
+    borderRadius: 14,
+    gap: 6,
+  },
+  actionButtonDanger: { backgroundColor: 'rgba(248, 113, 113, 0.08)' },
+  actionText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
 });

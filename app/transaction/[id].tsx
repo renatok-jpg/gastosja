@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert, ScrollView, Modal } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/theme';
 import { Transaction } from '../../types/database';
-
 import { getTransactionById, deleteTransaction } from '../../services/transactionService';
 
-// Mapa de ícones e cores por categoria (para manter o padrão da UI)
 const getCategoryDetails = (category: string) => {
     const map: Record<string, { icon: keyof typeof Ionicons.glyphMap, color: string }> = {
         'Alimentação': { icon: 'restaurant-outline', color: Colors.alimentation },
@@ -25,6 +23,10 @@ export default function TransactionDetails() {
     const router = useRouter();
     const [transaction, setTransaction] = useState<Transaction | null>(null);
     const [loading, setLoading] = useState(true);
+    
+    // Estado para controlar a visibilidade do nosso Modal customizado
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         const fetchTransaction = async () => {
@@ -37,28 +39,22 @@ export default function TransactionDetails() {
         fetchTransaction();
     }, [id]);
 
-    const handleDelete = () => {
-        Alert.alert(
-            "Excluir Transação",
-            "Tem certeza que deseja excluir esta transação? Essa ação não pode ser desfeita.",
-            [
-                { text: "Cancelar", style: "cancel" },
-                {
-                    text: "Excluir",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            if (typeof id === 'string') {
-                                await deleteTransaction(id);
-                                router.back();
-                            }
-                        } catch (error) {
-                            Alert.alert("Erro", "Não foi possível excluir a transação.");
-                        }
-                    }
-                }
-            ]
-        );
+    // Função que realmente exclui a transação no banco
+    const confirmDelete = async () => {
+        setIsDeleting(true);
+        try {
+            const transactionId = Array.isArray(id) ? id[0] : id;
+            if (transactionId) {
+                await deleteTransaction(transactionId);
+                setShowDeleteModal(false);
+                router.back();
+            }
+        } catch (error) {
+            console.error("Erro ao excluir:", error);
+            Alert.alert("Erro", "Não foi possível excluir a transação.");
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     if (loading) {
@@ -83,7 +79,6 @@ export default function TransactionDetails() {
     const isIncome = transaction.type === 'income';
     const categoryDetails = getCategoryDetails(transaction.category);
     
-    // Formata a data igual à imagem: "quarta-feira, 20 de maio de 2026"
     const formattedDate = transaction.date.toLocaleDateString('pt-BR', {
         weekday: 'long',
         day: '2-digit',
@@ -99,7 +94,7 @@ export default function TransactionDetails() {
                     <Ionicons name="chevron-back" size={24} color={Colors.white} />
                 </Pressable>
                 <Text style={styles.headerTitle}>Detalhes</Text>
-                <View style={{ width: 24 }} /> {/* Espaçador invisível para centralizar o título */}
+                <View style={{ width: 24 }} />
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -126,9 +121,8 @@ export default function TransactionDetails() {
                     <Text style={styles.titleText}>{transaction.title}</Text>
                 </LinearGradient>
 
-                {/* Card de Informações (List) */}
+                {/* Card de Informações */}
                 <View style={styles.infoCard}>
-                    
                     <View style={styles.infoRow}>
                         <View style={styles.infoIconBox}>
                             <Ionicons name="pricetag-outline" size={20} color={categoryDetails.color} />
@@ -162,14 +156,13 @@ export default function TransactionDetails() {
                             <Text style={styles.infoValue}>{transaction.notes || '—'}</Text>
                         </View>
                     </View>
-
                 </View>
 
                 {/* Botões de Ação */}
                 <View style={styles.actionButtons}>
                     <Pressable 
                         style={styles.editButton} 
-                        onPress={() => console.log('Navegar para edição')} // Substitua pela sua rota de edição
+                        onPress={() => console.log('Edição ignorada por enquanto')} 
                     >
                         <Ionicons name="pencil" size={20} color={Colors.white} />
                         <Text style={styles.editButtonText}>Editar</Text>
@@ -177,14 +170,56 @@ export default function TransactionDetails() {
 
                     <Pressable 
                         style={styles.deleteButton} 
-                        onPress={handleDelete}
+                        onPress={() => setShowDeleteModal(true)} // Abre o nosso Modal ao invés do Alert
                     >
                         <Ionicons name="trash-outline" size={20} color={Colors.destructive} />
                         <Text style={styles.deleteButtonText}>Excluir</Text>
                     </Pressable>
                 </View>
-
             </ScrollView>
+
+            {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+            <Modal
+                visible={showDeleteModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowDeleteModal(false)}
+            >
+                <View style={styles.modalBackdrop}>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalIconContainer}>
+                            <Ionicons name="warning-outline" size={32} color={Colors.destructive} />
+                        </View>
+                        
+                        <Text style={styles.modalTitle}>Excluir Transação</Text>
+                        <Text style={styles.modalMessage}>
+                            Tem certeza que deseja excluir esta transação? Essa ação não pode ser desfeita.
+                        </Text>
+                        
+                        <View style={styles.modalButtonsContainer}>
+                            <Pressable 
+                                style={[styles.modalButton, styles.modalButtonCancel]} 
+                                onPress={() => setShowDeleteModal(false)}
+                                disabled={isDeleting}
+                            >
+                                <Text style={styles.modalButtonCancelText}>Cancelar</Text>
+                            </Pressable>
+                            
+                            <Pressable 
+                                style={[styles.modalButton, styles.modalButtonDelete]} 
+                                onPress={confirmDelete}
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? (
+                                    <ActivityIndicator color={Colors.white} size="small" />
+                                ) : (
+                                    <Text style={styles.modalButtonDeleteText}>Excluir</Text>
+                                )}
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -209,7 +244,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: 60, // Ajuste dependendo do seu SafeAreaView
+        paddingTop: 60,
         paddingBottom: 20,
     },
     backButton: {
@@ -289,7 +324,7 @@ const styles = StyleSheet.create({
     divider: {
         height: 1,
         backgroundColor: Colors.border,
-        marginLeft: 56, // Alinha a linha divisória com o texto, pulando o ícone
+        marginLeft: 56,
     },
     actionButtons: {
         flexDirection: 'row',
@@ -318,7 +353,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(248, 113, 113, 0.1)', // Fundo com leve tint vermelho
+        backgroundColor: 'rgba(248, 113, 113, 0.1)',
         paddingVertical: 16,
         borderRadius: 16,
         borderWidth: 1,
@@ -333,5 +368,75 @@ const styles = StyleSheet.create({
     errorText: {
         color: Colors.destructive,
         fontSize: 16,
-    }
+    },
+
+    /* --- ESTILOS DO NOVO MODAL --- */
+    modalBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContainer: {
+        backgroundColor: Colors.card,
+        borderRadius: 24,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: Colors.border,
+    },
+    modalIconContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(248, 113, 113, 0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: Colors.white,
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    modalMessage: {
+        fontSize: 14,
+        color: Colors.textSecondary,
+        textAlign: 'center',
+        marginBottom: 24,
+        lineHeight: 20,
+    },
+    modalButtonsContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%',
+    },
+    modalButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalButtonCancel: {
+        backgroundColor: Colors.surfaceElevated,
+    },
+    modalButtonCancelText: {
+        color: Colors.white,
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    modalButtonDelete: {
+        backgroundColor: Colors.destructive,
+    },
+    modalButtonDeleteText: {
+        color: Colors.white,
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
 });

@@ -6,7 +6,7 @@ import { Colors } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../../components/ui/header';
 import { SummaryCard } from '../../components/ui/summaryCard';
-
+import { useRouter } from 'expo-router';
 // exemplo de tipagem pensando em backend
 type TransactionType = 'income' | 'expense';
 
@@ -71,6 +71,8 @@ const transactionTypeConfig = {
 
 // Componente principal da tela de boas-vindas
 export default function Welcome() {
+    const router = useRouter();
+
     return (
 
         <ScrollView
@@ -86,8 +88,10 @@ export default function Welcome() {
                 {/* Seção de transações recentes */}
                 <View style={styles.textRow}>
                     <Text style={styles.title}>Transações Recentes</Text>
-                    {/* Placeholder para um botão de "Ver Todas" ou similar */}
-                    <Text style={styles.subtitle}>Mostrar Tudo </Text>
+                  
+                    <Text style={styles.subtitle} onPress={() => router.push('/transactions')}>
+                        Mostrar Tudo
+                    </Text>
                 </View>
                 {/* Lista de transações recentes */}
 

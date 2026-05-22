@@ -1,58 +1,69 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { Colors } from '../constants/theme';
 import { auth } from '../services/firebaseConfig';
-// Adicionado o updateProfile aqui embaixo
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Login() {
-  const [name, setName] = useState(''); // Estado para o nome
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true); // Novo: estado para segurar o app no carregamento inicial
   const [error, setError] = useState('');
   const router = useRouter();
 
+  // Bloqueio de segurança inicial
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Se já estiver logado, pula direto pras abas
+        router.replace('../(tabs)/index');
+      } else {
+        // Se não tiver ninguém, libera o formulário de login
+        setCheckingAuth(false);
+      }
+    });
+    return () => unsub();
+  }, []);
+
   const handleAuth = async () => {
-    // Validação mudou para exigir nome no cadastro
     if (!email || !password || (isSignUp && !name)) {
       setError('Preencha todos os campos');
       return;
     }
-
     setLoading(true);
     setError('');
 
     try {
       if (isSignUp) {
-        // 1. Cria o usuário com e-mail e senha
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        
-        // 2. Salva o nome dele no perfil do Firebase
-        await updateProfile(userCredential.user, {
-          displayName: name
-        });
-        
-        console.log('Cadastro e nome salvos com sucesso!');
+        await updateProfile(userCredential.user, { displayName: name });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
-        console.log('Login realizado!');
       }
-      
       router.replace('/(tabs)');
     } catch (err: any) {
       if (err.code === 'auth/email-already-in-use') setError('Este e-mail já está em uso.');
       else if (err.code === 'auth/invalid-email') setError('E-mail inválido.');
       else if (err.code === 'auth/weak-password') setError('A senha deve ter pelo menos 6 caracteres.');
-      else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') setError('E-mail ou senha incorretos.');
-      else setError(err.message);
+      else setError('E-mail ou senha incorretos.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Se estiver checando o login automático, mostra o loading e esconde o layout do formulário
+  if (checkingAuth) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
+        <ActivityIndicator color={Colors.primary} size="large" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -62,7 +73,6 @@ export default function Login() {
       </View>
 
       <View style={styles.form}>
-        {/* CAMPO DE NOME: Aparece apenas se for Cadastro (isSignUp === true) */}
         {isSignUp && (
           <>
             <Text style={styles.label}>NOME</Text>
@@ -103,10 +113,7 @@ export default function Login() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            (loading || pressed) && { opacity: 0.7 }
-          ]}
+          style={({ pressed }) => [styles.button, (loading || pressed) && { opacity: 0.7 }]}
           onPress={handleAuth}
           disabled={loading}
         >
@@ -115,14 +122,7 @@ export default function Login() {
           </Text>
         </Pressable>
 
-        <Pressable 
-          onPress={() => {
-            setIsSignUp(!isSignUp);
-            setError('');
-            setName(''); // Limpa o nome ao alternar
-          }} 
-          disabled={loading}
-        >
+        <Pressable onPress={() => { setIsSignUp(!isSignUp); setError(''); setName(''); }} disabled={loading}>
           <Text style={styles.switchText}>
             {isSignUp ? 'Já tem conta? Faça login' : 'Não tem conta? Cadastre-se'}
           </Text>

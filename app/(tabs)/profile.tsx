@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -50,11 +50,13 @@ const ListItem = ({ icon, title, value, showChevron = true, danger = false, onPr
 
 export default function Profile() {
     const router = useRouter();
-    const [user, setUser] = useState<User | null>(auth.currentUser);
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             setUser(currentUser);
+            setLoading(false); // Dados carregados do Firebase, pode liberar a tela
         });
         return () => unsubscribe();
     }, []);
@@ -68,6 +70,15 @@ export default function Profile() {
         }
     };
 
+    // Enquanto o Firebase não responde quem é o usuário logado, mostra um loading discreto
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator color={Colors.primary} size="large" />
+            </View>
+        );
+    }
+
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
             <View style={styles.content}>
@@ -76,7 +87,7 @@ export default function Profile() {
                     <Text style={styles.screenTitle}>Perfil</Text>
                 </View>
 
-                
+                {/* Card do Usuário Real vindo do Firebase */}
                 <View style={styles.card}>
                     <View style={styles.userCardContent}>
                         <View style={styles.userInfo}>
@@ -84,7 +95,7 @@ export default function Profile() {
                                 {user?.displayName || 'Usuário GastosJá'}
                             </Text>
                             <Text style={styles.userEmail} numberOfLines={1}>
-                                {user?.email || 'usuario@email.com'}
+                                {user?.email || 'Sem e-mail cadastrado'}
                             </Text>
                         </View>
                     </View>
@@ -102,7 +113,7 @@ export default function Profile() {
                 </View>
 
                 <View style={styles.footer}>
-                    <Text style={styles.footerText}>Equipe GastosJá — 2026</Text>
+                    <Text style={styles.footerText}>Feito com 💚 — GastosJá v1.0.0</Text>
                 </View>
             </View>
         </ScrollView>
@@ -111,6 +122,7 @@ export default function Profile() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background, paddingHorizontal: 5 },
+    loadingContainer: { flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' },
     contentContainer: { alignItems: 'center', justifyContent: 'flex-start', paddingBottom: 40 },
     content: { width: '100%', paddingHorizontal: 10, paddingTop: 10, alignItems: 'flex-start' },
     headerRow: { width: '100%', paddingHorizontal: 10, marginTop: 25, marginBottom: 20 },

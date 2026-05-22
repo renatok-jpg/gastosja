@@ -21,7 +21,7 @@ export default function Login() {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
         // Se já estiver logado, pula direto pras abas
-        router.replace('../(tabs)/index');
+        router.replace('../(tabs)/home');
       } else {
         // Se não tiver ninguém, libera o formulário de login
         setCheckingAuth(false);
@@ -45,7 +45,7 @@ export default function Login() {
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/home');
     } catch (err: any) {
       if (err.code === 'auth/email-already-in-use') setError('Este e-mail já está em uso.');
       else if (err.code === 'auth/invalid-email') setError('E-mail inválido.');

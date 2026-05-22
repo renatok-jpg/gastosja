@@ -64,7 +64,7 @@ export default function Profile() {
     const handleSignOut = async () => {
         try {
             await signOut(auth);
-            router.replace('../index');
+            router.replace('/'); // Volta para a tela de login
         } catch (error) {
             console.error("Erro ao deslogar: ", error);
         }

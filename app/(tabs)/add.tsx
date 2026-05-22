@@ -1,21 +1,83 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
-
-// Importando o seu objeto de cores real
 import { Colors } from '../../constants/theme';
+import { addTransaction } from '../../services/transactionService';
 
 export default function NewTransaction() {
     const navigation = useNavigation();
 
-    // Estados para controlar o formulário
     const [transactionType, setTransactionType] = useState<'expense' | 'income' | 'goal'>('expense');
     const [amount, setAmount] = useState('0,00');
     const [title, setTitle] = useState('');
     const [category, setCategory] = useState('Alimentação');
     const [date, setDate] = useState('22/05/2026');
     const [notes, setNotes] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    // Função para converter string de valor para número
+    const parseAmount = (value: string): number => {
+        // Remove tudo exceto dígitos e vírgula
+        const cleaned = value.replace(/[^0-9,]/g, '');
+        // Substitui vírgula por ponto para conversão
+        const normalized = cleaned.replace(',', '.');
+        const numberValue = parseFloat(normalized);
+        return isNaN(numberValue) ? 0 : numberValue;
+    };
+
+    const handleSave = async () => {
+        try {
+            // Validações
+            if (!title.trim()) {
+                Alert.alert('Erro', 'Digite um título para a transação.');
+                return;
+            }
+
+            const numericAmount = parseAmount(amount);
+            if (numericAmount <= 0) {
+                Alert.alert('Erro', 'Digite um valor maior que zero.');
+                return;
+            }
+
+            // Ignora tipo 'goal' por enquanto
+            if (transactionType === 'goal') {
+                Alert.alert('Aviso', 'Tipo "Meta" ainda não está implementado. Selecione Despesa ou Receita.');
+                return;
+            }
+
+            // Converte data string "DD/MM/AAAA" para Date
+            const [day, month, year] = date.split('/');
+            const dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+
+            setLoading(true);
+
+            await addTransaction({
+                title: title.trim(),
+                amount: numericAmount,
+                type: transactionType as 'income' | 'expense',
+                category,
+                date: dateObj,
+                notes: notes.trim() || undefined,
+            });
+
+            Alert.alert('Sucesso', 'Transação salva com sucesso!');
+
+            // Limpa formulário
+            setTransactionType('expense');
+            setAmount('0,00');
+            setTitle('');
+            setCategory('Alimentação');
+            setDate('22/05/2026');
+            setNotes('');
+
+        } catch (error) {
+            console.error('Erro ao salvar:', error);
+            Alert.alert('Erro', 'Não foi possível salvar a transação. Verifique sua conexão.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <ScrollView
@@ -23,7 +85,6 @@ export default function NewTransaction() {
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
         >
-
             {/* HEADER DA TELA */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Nova transação</Text>
@@ -71,6 +132,7 @@ export default function NewTransaction() {
                         value={amount}
                         onChangeText={setAmount}
                         placeholderTextColor={Colors.textSecondary}
+                        editable={!loading}
                     />
                 </View>
             </View>
@@ -84,6 +146,7 @@ export default function NewTransaction() {
                     placeholderTextColor={Colors.textSecondary}
                     value={title}
                     onChangeText={setTitle}
+                    editable={!loading}
                 />
             </View>
 
@@ -92,7 +155,6 @@ export default function NewTransaction() {
                 <Text style={styles.inputLabel}>CATEGORIA</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
 
-                    {/* Categoria Alimentação (Laranja igual ao seu print) */}
                     <Pressable
                         style={[styles.categoryBadge, category === 'Alimentação' && { backgroundColor: '#FF7A00' }]}
                         onPress={() => setCategory('Alimentação')}
@@ -101,7 +163,6 @@ export default function NewTransaction() {
                         <Text style={styles.categoryText}>Alimentação</Text>
                     </Pressable>
 
-                    {/* Categoria Transporte */}
                     <Pressable
                         style={[styles.categoryBadge, category === 'Transporte' && styles.categoryInactiveBadge]}
                         onPress={() => setCategory('Transporte')}
@@ -110,7 +171,6 @@ export default function NewTransaction() {
                         <Text style={styles.categoryText}>Transporte</Text>
                     </Pressable>
 
-                    {/* Categoria Saúde */}
                     <Pressable
                         style={[styles.categoryBadge, category === 'Saúde' && styles.categoryInactiveBadge]}
                         onPress={() => setCategory('Saúde')}
@@ -142,16 +202,20 @@ export default function NewTransaction() {
                     numberOfLines={4}
                     value={notes}
                     onChangeText={setNotes}
+                    editable={!loading}
                 />
             </View>
 
-            {/* BOTÃO SALVAR (Usando seu verde vibrante Colors.primary) */}
+            {/* BOTÃO SALVAR */}
             <Pressable
-                style={styles.saveButton}
-                onPress={() => console.log('Salvar dados:', { transactionType, amount, title, category, date, notes })}
+                style={[styles.saveButton, loading && { opacity: 0.6 }]}
+                onPress={handleSave}
+                disabled={loading}
             >
                 <Ionicons name="checkmark" size={22} color={Colors.background} style={{ marginRight: 8 }} />
-                <Text style={styles.saveButtonText}>Salvar transação</Text>
+                <Text style={styles.saveButtonText}>
+                    {loading ? 'Salvando...' : 'Salvar transação'}
+                </Text>
             </Pressable>
 
         </ScrollView>
@@ -163,7 +227,6 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: Colors.background,
         paddingHorizontal: 20,
-        
     },
     contentContainer: {
         paddingBottom: 40,
@@ -222,7 +285,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
-    
     },
     currencyText: {
         fontSize: 32,

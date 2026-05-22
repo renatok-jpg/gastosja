@@ -103,7 +103,7 @@ export default function AddGoal() {
       <View style={styles.infoCard}>
         <Ionicons name="bulb-outline" size={20} color={Colors.primary} style={{ marginRight: 10 }} />
         <Text style={styles.infoText}>
-          O prazo padrão é 3 meses. Você pode adicionar valores à meta a qualquer momento pela tela de Metas.
+           Você pode adicionar valores à meta a qualquer momento pela tela de Metas.
         </Text>
       </View>
 

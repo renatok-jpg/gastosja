@@ -121,10 +121,10 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.background, paddingHorizontal: 5 },
+    container: { flex: 1, backgroundColor: Colors.background, paddingHorizontal: 5, },
     loadingContainer: { flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' },
-    contentContainer: { alignItems: 'center', justifyContent: 'flex-start', paddingBottom: 40 },
-    content: { width: '100%', paddingHorizontal: 10, paddingTop: 10, alignItems: 'flex-start' },
+    contentContainer: { alignItems: 'center', justifyContent: 'flex-start', paddingBottom: 40, },
+    content: { width: '100%', paddingHorizontal: 10, paddingTop: 10, alignItems: 'flex-start',marginTop: 20 },
     headerRow: { width: '100%', paddingHorizontal: 10, marginTop: 25, marginBottom: 20 },
     screenTitle: { fontSize: 28, fontWeight: 'bold', color: Colors.white },
     card: { backgroundColor: Colors.card, width: '100%', borderRadius: 24, padding: 16, marginBottom: 16, shadowColor: Colors.cardShadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5, borderWidth: 2, borderColor: Colors.border },

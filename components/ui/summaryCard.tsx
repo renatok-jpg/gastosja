@@ -30,9 +30,6 @@ export function SummaryCard({ totalIncome, totalExpense, balance }: SummaryCardP
             <View style={styles.cardContent}>
                 <View style={styles.header}>
                     <Text style={styles.subtitle}>Saldo Total</Text>
-                    <View style={styles.eyeButton}>
-                        <Ionicons name="eye-outline" size={16} color={Colors.icon} />
-                    </View>
                 </View>
                 <Text style={styles.balance}>{formatCurrency(balance)}</Text>
                 <View style={styles.incomeAndExpenseContainer}>
@@ -90,14 +87,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 4,
         elevation: 1,
-    },
-    eyeButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: Colors.iconBg,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     incomeAndExpenseContainer: {
         flexDirection: 'row',

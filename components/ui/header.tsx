@@ -30,9 +30,10 @@ const styles = StyleSheet.create({
   headerContainer: {
     width: '100%',
     paddingHorizontal: 15,
-    paddingTop: 20,
+    paddingTop: 0,
     marginBottom: 10,
     alignItems: 'flex-start',
+    marginTop: 40,
   },
   greetingText: {
     fontSize: 24,

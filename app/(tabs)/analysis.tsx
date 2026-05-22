@@ -202,8 +202,8 @@ const CARD_WIDTH = (width - 36) / 2;
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: Colors.background },
   container: { flex: 1 },
-  contentContainer: { paddingHorizontal: 12, paddingTop: 20, paddingBottom: 20 },
-  headerTitle: { fontSize: 28, fontWeight: '700', color: Colors.white, marginBottom: 20, paddingHorizontal: 4 },
+  contentContainer: { paddingHorizontal: 12, paddingTop: 0, paddingBottom: 20 },
+  headerTitle: { fontSize: 28, fontWeight: '700', color: Colors.white, marginBottom: 20, paddingHorizontal: 4 , marginTop: 40},
 
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%' },
   miniCard: { width: CARD_WIDTH, borderRadius: 20, padding: 16, marginBottom: 12, height: 140, justifyContent: 'space-between' },

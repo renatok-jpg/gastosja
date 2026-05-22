@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 
 export default function MetasScreen() {
   const router = useRouter();
-  
+
   // Estados da lista de metas
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +18,10 @@ export default function MetasScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [inputValue, setInputValue] = useState('');
+
+  // Estados do Modal para Excluir Meta
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
 
   // Escuta as mudanças no banco de dados em tempo real
   useEffect(() => {
@@ -60,7 +64,7 @@ export default function MetasScreen() {
   // Soma a nova quantia ao valor atual da meta (com validação de teto máximo)
   const handleConfirmAddValue = async () => {
     if (!selectedGoal || !inputValue) return;
-    
+
     // Converte vírgula em ponto para aceitar decimais
     const num = parseFloat(inputValue.replace(',', '.'));
     if (isNaN(num) || num <= 0) {
@@ -69,17 +73,17 @@ export default function MetasScreen() {
     }
 
     const newAmount = selectedGoal.currentAmount + num;
-    
+
     // REGRA DE SEGURANÇA: impede ultrapassar o valor máximo estabelecido
     if (newAmount > selectedGoal.targetAmount) {
       const limiteDisponivel = selectedGoal.targetAmount - selectedGoal.currentAmount;
       Alert.alert(
-        'Valor ultrapassa o limite', 
+        'Valor ultrapassa o limite',
         `Faltam apenas R$ ${limiteDisponivel.toFixed(2).replace('.', ',')} para atingir o objetivo. Insira um valor menor ou igual.`
       );
       return;
     }
-    
+
     try {
       await updateGoal(selectedGoal.id, { currentAmount: newAmount });
       setModalVisible(false);
@@ -90,21 +94,31 @@ export default function MetasScreen() {
   };
 
   // Botão de deletar funcionando e integrado
+  // Abre o modal de exclusão
   const handleDelete = (goal: Goal) => {
-    Alert.alert('Eliminar meta', `Tens a certeza que desejas excluir a meta "${goal.title}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteGoal(goal.id);
-          } catch (err: any) {
-            Alert.alert('Erro ao eliminar', err.message || 'Ocorreu um erro.');
-          }
-        },
-      },
-    ]);
+    setGoalToDelete(goal);
+    setDeleteModalVisible(true);
+  };
+
+  const handleCancelDelete = () => {
+    setGoalToDelete(null);
+    setDeleteModalVisible(false);
+  };
+
+  const confirmDeleteGoal = async () => {
+    if (!goalToDelete) return;
+
+    try {
+      await deleteGoal(goalToDelete.id);
+    } catch (err: any) {
+      Alert.alert(
+        'Erro ao eliminar',
+        err.message || 'Ocorreu um erro ao eliminar a meta.'
+      );
+    } finally {
+      setGoalToDelete(null);
+      setDeleteModalVisible(false);
+    }
   };
 
   if (loading) {
@@ -121,7 +135,7 @@ export default function MetasScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -152,7 +166,7 @@ export default function MetasScreen() {
           <Text style={styles.mainCardDescription}>
             de R$ {totalTarget.toFixed(2).replace('.', ',')} em {goals.length} meta{goals.length !== 1 ? 's' : ''}
           </Text>
-          
+
           <View style={styles.progressBarBackground}>
             <View style={[styles.progressBarFill, { width: `${Math.min(percentage, 100)}%` }]} />
           </View>
@@ -176,11 +190,11 @@ export default function MetasScreen() {
           </View>
         ) : (
           goals.map((goal) => {
-            const goalPercentage = goal.targetAmount > 0 
-              ? (goal.currentAmount / goal.targetAmount) * 100 
+            const goalPercentage = goal.targetAmount > 0
+              ? (goal.currentAmount / goal.targetAmount) * 100
               : 0;
             const isCompleted = goal.currentAmount >= goal.targetAmount;
-            
+
             return (
               <View key={goal.id} style={[styles.goalCard, isCompleted && styles.goalCardCompleted]}>
                 <View style={styles.goalCardHeader}>
@@ -202,7 +216,7 @@ export default function MetasScreen() {
 
                 <View style={styles.goalProgressBarBackground}>
                   <View style={[
-                    styles.goalProgressBarFill, 
+                    styles.goalProgressBarFill,
                     { width: `${Math.min(goalPercentage, 100)}%` },
                     isCompleted && { backgroundColor: Colors.primary }
                   ]} />
@@ -220,8 +234,8 @@ export default function MetasScreen() {
                 {/* Botões de Ação */}
                 <View style={styles.actionRow}>
                   {/* Se completou, desativa visualmente o botão Adicionar */}
-                  <TouchableOpacity 
-                    style={[styles.actionButton, isCompleted && styles.actionButtonDisabled]} 
+                  <TouchableOpacity
+                    style={[styles.actionButton, isCompleted && styles.actionButtonDisabled]}
                     onPress={() => openAddModal(goal)}
                   >
                     <Feather name="plus-circle" size={18} color={isCompleted ? Colors.textSecondary : Colors.primary} />
@@ -229,7 +243,7 @@ export default function MetasScreen() {
                       {isCompleted ? 'Máximo' : 'Adicionar'}
                     </Text>
                   </TouchableOpacity>
-                  
+
                   <TouchableOpacity style={[styles.actionButton, styles.actionButtonDanger]} onPress={() => handleDelete(goal)}>
                     <Feather name="trash-2" size={18} color={Colors.expense} />
                     <Text style={[styles.actionText, { color: Colors.expense }]}>Excluir</Text>
@@ -242,10 +256,10 @@ export default function MetasScreen() {
       </ScrollView>
 
       {/* MODAL PARA ADICIONAR VALOR */}
-      <Modal 
-        transparent 
-        visible={modalVisible} 
-        animationType="fade" 
+      <Modal
+        transparent
+        visible={modalVisible}
+        animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
@@ -254,7 +268,7 @@ export default function MetasScreen() {
             <Text style={styles.modalSubtitle}>
               Quanto queres somar à meta "{selectedGoal?.title}"? (Faltam R$ {((selectedGoal?.targetAmount || 0) - (selectedGoal?.currentAmount || 0)).toFixed(2).replace('.', ',')})
             </Text>
-            
+
             <TextInput
               style={styles.modalInput}
               placeholder="Ex: 50,00"
@@ -276,6 +290,51 @@ export default function MetasScreen() {
           </View>
         </View>
       </Modal>
+      {/* MODAL PARA CONFIRMAR EXCLUSÃO */}
+      <Modal
+        transparent
+        visible={deleteModalVisible}
+        animationType="fade"
+        onRequestClose={handleCancelDelete}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              Confirmar exclusão
+            </Text>
+
+            <Text style={styles.modalSubtitle}>
+              Tens a certeza que desejas eliminar a meta "
+              {goalToDelete?.title}"?
+              Esta ação não pode ser desfeita.
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButtonCancel}
+                onPress={handleCancelDelete}
+              >
+                <Text style={styles.modalButtonCancelText}>
+                  Cancelar
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalButtonConfirm,
+                  { backgroundColor: Colors.expense }
+                ]}
+                onPress={confirmDeleteGoal}
+              >
+                <Text style={styles.modalButtonConfirmText}>
+                  Eliminar
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
 
     </SafeAreaView>
   );
@@ -284,11 +343,11 @@ export default function MetasScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scrollContent: { paddingBottom: 150 },
-  
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginTop: 20, marginBottom: 24 },
+
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginTop: 40, marginBottom: 24 },
   headerTitle: { fontSize: 32, fontWeight: 'bold', color: Colors.textPrimary },
   headerSubtitle: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
-  fabButton: { 
+  fabButton: {
     width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center',
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8,
   },

@@ -111,7 +111,7 @@ export default function NewTransaction() {
                     </Text>
                 </Pressable>
 
-                   
+
             </View>
 
             {/* CAMPO DE VALOR */}
@@ -149,7 +149,11 @@ export default function NewTransaction() {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
 
                     <Pressable
-                        style={[styles.categoryBadge, category === 'Alimentação' && { backgroundColor: '#FF7A00' }]}
+                        style={[
+                            styles.categoryBadge,
+                            category !== 'Alimentação' && styles.categoryInactiveBadge,
+                            category === 'Alimentação' && { backgroundColor: Colors.alimentation }
+                        ]}
                         onPress={() => setCategory('Alimentação')}
                     >
                         <Ionicons name="restaurant-outline" size={16} color={Colors.white} />
@@ -157,7 +161,11 @@ export default function NewTransaction() {
                     </Pressable>
 
                     <Pressable
-                        style={[styles.categoryBadge, category === 'Transporte' && styles.categoryInactiveBadge]}
+                        style={[
+                            styles.categoryBadge,
+                            category !== 'Transporte' && styles.categoryInactiveBadge,
+                            category === 'Transporte' && { backgroundColor: Colors.transport }
+                        ]}
                         onPress={() => setCategory('Transporte')}
                     >
                         <Ionicons name="car-outline" size={16} color={Colors.white} />
@@ -165,11 +173,63 @@ export default function NewTransaction() {
                     </Pressable>
 
                     <Pressable
-                        style={[styles.categoryBadge, category === 'Saúde' && styles.categoryInactiveBadge]}
+                        style={[
+                            styles.categoryBadge,
+                            category !== 'Saúde' && styles.categoryInactiveBadge,
+                            category === 'Saúde' && { backgroundColor: Colors.health }
+                        ]}
                         onPress={() => setCategory('Saúde')}
                     >
                         <Ionicons name="heart-outline" size={16} color={Colors.white} />
                         <Text style={styles.categoryText}>Saúde</Text>
+                    </Pressable>
+
+                    <Pressable
+                        style={[
+                            styles.categoryBadge,
+                            category !== 'Lazer' && styles.categoryInactiveBadge,
+                            category === 'Lazer' && { backgroundColor: Colors.leisure }
+                        ]}
+                        onPress={() => setCategory('Lazer')}
+                    >
+                        <Ionicons name="game-controller-outline" size={16} color={Colors.white} />
+                        <Text style={styles.categoryText}>Lazer</Text>
+                    </Pressable>
+
+                    <Pressable
+                        style={[
+                            styles.categoryBadge,
+                            category !== 'Trabalho' && styles.categoryInactiveBadge,
+                            category === 'Trabalho' && { backgroundColor: Colors.work }
+                        ]}
+                        onPress={() => setCategory('Trabalho')}
+                    >
+                        <Ionicons name="briefcase-outline" size={16} color={Colors.white} />
+                        <Text style={styles.categoryText}>Trabalho</Text>
+                    </Pressable>
+
+                    <Pressable
+                        style={[
+                            styles.categoryBadge,
+                            category !== 'Freelance' && styles.categoryInactiveBadge,
+                            category === 'Freelance' && { backgroundColor: Colors.freelance }
+                        ]}
+                        onPress={() => setCategory('Freelance')}
+                    >
+                        <Ionicons name="laptop-outline" size={16} color={Colors.white} />
+                        <Text style={styles.categoryText}>Freelance</Text>
+                    </Pressable>
+
+                    <Pressable
+                        style={[
+                            styles.categoryBadge,
+                            category !== 'Outros' && styles.categoryInactiveBadge,
+                            category === 'Outros' && { backgroundColor: Colors.others }
+                        ]}
+                        onPress={() => setCategory('Outros')}
+                    >
+                        <Ionicons name="ellipsis-horizontal-outline" size={16} color={Colors.white} />
+                        <Text style={styles.categoryText}>Outros</Text>
                     </Pressable>
 
                 </ScrollView>
@@ -220,10 +280,12 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: Colors.background,
         paddingHorizontal: 20,
+
     },
     contentContainer: {
-        paddingBottom: 40,
+        paddingBottom: 120,
         marginBottom: 100
+
     },
     header: {
         flexDirection: 'row',

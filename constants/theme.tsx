@@ -50,4 +50,12 @@ export const Colors = {
   iconIncome: '#rgba(96, 165, 250, 0.4)',
   iconExpense: '#rgba(248, 113, 113, 0.4)',
   icon: '#9CA3AF',
+
+  alimentation: '#F97316',
+  transport: '#3B82F6',
+  health: '#EF4444',
+  leisure: '#8B5CF6',
+  others: '#6B7280',
+  work: '#14B8A6',
+  freelance: '#F59E0B',
 };

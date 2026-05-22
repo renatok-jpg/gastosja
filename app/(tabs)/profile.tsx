@@ -113,7 +113,7 @@ export default function Profile() {
                 </View>
 
                 <View style={styles.footer}>
-                    <Text style={styles.footerText}>Feito com 💚 — GastosJá v1.0.0</Text>
+                    <Text style={styles.footerText}>Equipe GastosJá — 2026</Text>
                 </View>
             </View>
         </ScrollView>

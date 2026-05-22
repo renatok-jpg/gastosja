@@ -54,7 +54,11 @@ export default function Welcome() {
             {/* Conteúdo principal */}
             <View style={styles.content}>
                 {/* Card de resumo financeiro */}
-                <SummaryCard />
+                <SummaryCard
+                    totalIncome={transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0)}
+                    totalExpense={transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0)}
+                    balance={transactions.reduce((sum, t) => t.type === 'income' ? sum + t.amount : sum - t.amount, 0)}
+                />
                 {/* Seção de transações recentes */}
                 <View style={styles.textRow}>
                     <Text style={styles.title}>Transações Recentes</Text>

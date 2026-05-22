@@ -16,7 +16,7 @@ export default function TabsLayout() {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (!user) {
         // Se não estiver logado, expulsa para a raiz (que agora é a index.tsx / Login)
-        router.replace("/login");
+        router.replace("../index");
       } else {
         // Se estiver logado, marca como autenticado
         setAuthenticated(true);

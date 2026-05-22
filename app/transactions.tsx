@@ -1,99 +1,165 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Colors } from '../constants/theme';
+import { onTransactionsChange } from '../services/transactionService';
+import { Transaction } from '../types/database';
 
-const groupedTransactions = [
-    {
-        id: 'g1',
-        date: 'QUARTA-FEIRA, 20 DE MAIO',
-        dailyTotal: '+R$ 3.500,00',
-        totalType: 'income',
-        data: [
-            {
-                id: '1',
-                title: 'Salário',
-                subtitle: 'Salário · 09:00',
-                amount: '+ R$ 3.500,00',
-                amountColor: Colors.income,
-                icon: 'briefcase-outline',
-                iconColor: Colors.income,
-                iconBg: Colors.iconIncome,
-            }
-        ]
-    },
-    {
-        id: 'g2',
-        date: 'TERÇA-FEIRA, 19 DE MAIO',
-        dailyTotal: '-R$ 184,50',
-        totalType: 'textPrimary',
-        data: [
-            {
-                id: '2',
-                title: 'Mercado',
-                subtitle: 'Alimentação · 18:30',
-                amount: '- R$ 184,50',
-                amountColor: Colors.textPrimary,
-                icon: 'restaurant-outline',
-                iconColor: Colors.expense, 
-                iconBg: Colors.iconExpense,
-            }
-        ]
-    },
-    {
-        id: 'g3',
-        date: 'SEGUNDA-FEIRA, 18 DE MAIO',
-        dailyTotal: '-R$ 78,80',
-        totalType: 'textPrimary',
-        data: [
-            {
-                id: '3',
-                title: 'Uber',
-                subtitle: 'Transporte · 08:15',
-                amount: '- R$ 22,90',
-                amountColor: Colors.textPrimary,
-                icon: 'car-outline',
-                iconColor: Colors.textSecondary, // Neutro se quiser variar
-                iconBg: Colors.iconBg,
-            },
-            {
-                id: '4',
-                title: 'Netflix',
-                subtitle: 'Assinaturas · 22:00',
-                amount: '- R$ 55,90',
-                amountColor: Colors.textPrimary,
-                icon: 'wifi-outline',
-                iconColor: Colors.expense,
-                iconBg: Colors.iconExpense,
-            }
-        ]
-    }
-];
+// Mapa de categoria para ícone
+const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
+    const map: Record<string, keyof typeof Ionicons.glyphMap> = {
+        'Alimentação': 'restaurant-outline',
+        'Transporte': 'car-outline',
+        'Saúde': 'heart-outline',
+        'Salário': 'briefcase-outline',
+        'Freelance': 'laptop-outline',
+        'Assinaturas': 'wifi-outline',
+    };
+    return map[category] || 'wallet-outline';
+};
+
+// Mapa de categoria para cor do ícone
+const getCategoryIconColor = (type: Transaction['type'], category: string): string => {
+    if (type === 'income') return Colors.income;
+    if (category === 'Alimentação') return Colors.expense;
+    if (category === 'Transporte') return Colors.textSecondary;
+    if (category === 'Assinaturas') return Colors.expense;
+    return Colors.textSecondary;
+};
+
+// Mapa de categoria para background do ícone
+const getCategoryIconBg = (type: Transaction['type'], category: string): string => {
+    if (type === 'income') return Colors.iconIncome;
+    if (category === 'Alimentação') return Colors.iconExpense;
+    if (category === 'Transporte') return Colors.iconBg;
+    if (category === 'Assinaturas') return Colors.iconExpense;
+    return Colors.iconBg;
+};
+
+// Formata data para "SEGUNDA-FEIRA, 18 DE MAIO"
+function formatGroupDate(date: Date): string {
+    const dias = ['DOMINGO', 'SEGUNDA-FEIRA', 'TERÇA-FEIRA', 'QUARTA-FEIRA', 'QUINTA-FEIRA', 'SEXTA-FEIRA', 'SÁBADO'];
+    const meses = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+    const diaSemana = dias[date.getDay()];
+    const dia = date.getDate();
+    const mes = meses[date.getMonth()];
+    return `${diaSemana}, ${dia} DE ${mes}`;
+}
+
+// Formata hora para "09:00"
+function formatTime(date: Date): string {
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Formata valor para "+ R$ 3.500,00" ou "- R$ 184,50"
+function formatAmount(amount: number, type: Transaction['type']): string {
+    const prefix = type === 'income' ? '+ ' : '- ';
+    const formatted = amount.toFixed(2).replace('.', ',');
+    return `${prefix}R$ ${formatted}`;
+}
+
+type GroupedData = {
+    id: string;
+    date: string;
+    dailyTotal: string;
+    totalType: 'income' | 'expense' | 'neutral';
+    data: Transaction[];
+};
 
 export default function TransactionsScreen() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState('Tudo');
+    const [activeTab, setActiveTab] = useState<'Tudo' | 'Receitas' | 'Despesas'>('Tudo');
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Listener em tempo real
+    useEffect(() => {
+        const unsubscribe = onTransactionsChange((data) => {
+            setTransactions(data);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Filtra por aba e busca
+    const filteredTransactions = useMemo(() => {
+        let filtered = transactions;
+
+        if (activeTab === 'Receitas') {
+            filtered = filtered.filter(t => t.type === 'income');
+        } else if (activeTab === 'Despesas') {
+            filtered = filtered.filter(t => t.type === 'expense');
+        }
+
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            filtered = filtered.filter(t =>
+                t.title.toLowerCase().includes(query) ||
+                t.category.toLowerCase().includes(query)
+            );
+        }
+
+        return filtered;
+    }, [transactions, activeTab, searchQuery]);
+
+    // Agrupa por data
+    const groupedTransactions = useMemo((): GroupedData[] => {
+        const groups: Record<string, Transaction[]> = {};
+
+        filteredTransactions.forEach(t => {
+            const dateKey = t.date.toISOString().split('T')[0];
+            if (!groups[dateKey]) groups[dateKey] = [];
+            groups[dateKey].push(t);
+        });
+
+        return Object.entries(groups)
+            .sort(([a], [b]) => b.localeCompare(a)) // Mais recente primeiro
+            .map(([dateKey, data]) => {
+                const date = new Date(dateKey + 'T12:00:00');
+                const income = data.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                const expense = data.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+                const net = income - expense;
+
+                let dailyTotal: string;
+                let totalType: 'income' | 'expense' | 'neutral';
+
+                if (net > 0) {
+                    dailyTotal = `+R$ ${net.toFixed(2).replace('.', ',')}`;
+                    totalType = 'income';
+                } else if (net < 0) {
+                    dailyTotal = `-R$ ${Math.abs(net).toFixed(2).replace('.', ',')}`;
+                    totalType = 'expense';
+                } else {
+                    dailyTotal = `R$ 0,00`;
+                    totalType = 'neutral';
+                }
+
+                return {
+                    id: dateKey,
+                    date: formatGroupDate(date),
+                    dailyTotal,
+                    totalType,
+                    data,
+                };
+            });
+    }, [filteredTransactions]);
 
     return (
         <SafeAreaView style={styles.container}>
             {/* Header */}
-           {/* Header */}
-<View style={styles.header}>
-    <Pressable 
-        onPress={() => router.push('/')} // ou router.back() se preferir apenas voltar a tela
-        style={({ pressed }) => [
-            styles.backButton,
-            pressed && { opacity: 0.7 }
-        ]}
-    >
-        <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
-    </Pressable>
-    <Text style={styles.headerTitle}>
-        Transações
-    </Text>
-</View>
+            <View style={styles.header}>
+                <Pressable
+                    onPress={() => router.push('/')}
+                    style={({ pressed }) => [
+                        styles.backButton,
+                        pressed && { opacity: 0.7 }
+                    ]}
+                >
+                    <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
+                </Pressable>
+                <Text style={styles.headerTitle}>Transações</Text>
+            </View>
 
             {/* Busca e Filtro */}
             <View style={styles.searchSection}>
@@ -103,6 +169,8 @@ export default function TransactionsScreen() {
                         style={styles.searchInput}
                         placeholder="Buscar transação..."
                         placeholderTextColor={Colors.textSecondary}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
                     />
                 </View>
                 <Pressable style={styles.filterButton}>
@@ -112,17 +180,15 @@ export default function TransactionsScreen() {
 
             {/* Abas */}
             <View style={styles.tabsContainer}>
-                {['Tudo', 'Receitas', 'Despesas'].map((tab) => {
+                {(['Tudo', 'Receitas', 'Despesas'] as const).map((tab) => {
                     const isActive = activeTab === tab;
                     return (
                         <Pressable
                             key={tab}
                             onPress={() => setActiveTab(tab)}
                             style={[
-                                styles.tab, 
-                                isActive && styles.activeTab,
-                                // Adiciona um leve background caso esteja ativo
-                                isActive && { backgroundColor: Colors.primary } 
+                                styles.tab,
+                                isActive && { backgroundColor: Colors.primary }
                             ]}
                         >
                             <Text style={[styles.tabText, isActive && styles.activeTabText]}>
@@ -138,52 +204,63 @@ export default function TransactionsScreen() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                {groupedTransactions.map((group) => (
-                    <View key={group.id} style={styles.groupContainer}>
-                        
-                        {/* Cabeçalho da Data */}
-                        <View style={styles.groupHeader}>
-                            <Text style={styles.groupDate}>{group.date}</Text>
-                            <Text style={[
-                                styles.groupTotal,
-                                { color: group.totalType === 'income' ? Colors.income : Colors.textPrimary }
-                            ]}>
-                                {group.dailyTotal}
-                            </Text>
-                        </View>
+                {groupedTransactions.length === 0 ? (
+                    <Text style={styles.emptyText}>Nenhuma transação encontrada</Text>
+                ) : (
+                    groupedTransactions.map((group) => (
+                        <View key={group.id} style={styles.groupContainer}>
+                            {/* Cabeçalho da Data */}
+                            <View style={styles.groupHeader}>
+                                <Text style={styles.groupDate}>{group.date}</Text>
+                                <Text style={[
+                                    styles.groupTotal,
+                                    { color: group.totalType === 'income' ? Colors.income : Colors.textPrimary }
+                                ]}>
+                                    {group.dailyTotal}
+                                </Text>
+                            </View>
 
-                        {/* Card do grupo */}
-                        <View style={styles.groupCard}>
-                            {group.data.map((transaction, index) => (
-                                <View key={transaction.id}>
-                                    <Pressable
-                                        style={({ pressed }) => [
-                                            styles.transactionRow,
-                                            pressed && { opacity: 0.7, backgroundColor: Colors.cardHover }
-                                        ]}
-                                    >
-                                        <View style={styles.iconAndText}>
-                                            <View style={[styles.iconWrapper, { backgroundColor: transaction.iconBg }]}>
-                                                <Ionicons name={transaction.icon as any} size={20} color={transaction.iconColor} />
-                                            </View>
-                                            <View style={styles.textContainer}>
-                                                <Text style={styles.transactionTitle}>{transaction.title}</Text>
-                                                <Text style={styles.transactionSubtitle}>{transaction.subtitle}</Text>
-                                            </View>
+                            {/* Card do grupo */}
+                            <View style={styles.groupCard}>
+                                {group.data.map((transaction, index) => {
+                                    const icon = getCategoryIcon(transaction.category);
+                                    const iconColor = getCategoryIconColor(transaction.type, transaction.category);
+                                    const iconBg = getCategoryIconBg(transaction.type, transaction.category);
+                                    const amountColor = transaction.type === 'income' ? Colors.income : Colors.textPrimary;
+
+                                    return (
+                                        <View key={transaction.id}>
+                                            <Pressable
+                                                style={({ pressed }) => [
+                                                    styles.transactionRow,
+                                                    pressed && { opacity: 0.7, backgroundColor: Colors.cardHover }
+                                                ]}
+                                            >
+                                                <View style={styles.iconAndText}>
+                                                    <View style={[styles.iconWrapper, { backgroundColor: iconBg }]}>
+                                                        <Ionicons name={icon} size={20} color={iconColor} />
+                                                    </View>
+                                                    <View style={styles.textContainer}>
+                                                        <Text style={styles.transactionTitle}>{transaction.title}</Text>
+                                                        <Text style={styles.transactionSubtitle}>
+                                                            {transaction.category} · {formatTime(transaction.date)}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                                <Text style={[styles.transactionAmount, { color: amountColor }]}>
+                                                    {formatAmount(transaction.amount, transaction.type)}
+                                                </Text>
+                                            </Pressable>
+
+                                            {/* Separador */}
+                                            {index < group.data.length - 1 && <View style={styles.separator} />}
                                         </View>
-                                        <Text style={[styles.transactionAmount, { color: transaction.amountColor }]}>
-                                            {transaction.amount}
-                                        </Text>
-                                    </Pressable>
-
-                                    {/* Separador */}
-                                    {index < group.data.length - 1 && <View style={styles.separator} />}
-                                </View>
-                            ))}
+                                    );
+                                })}
+                            </View>
                         </View>
-
-                    </View>
-                ))}
+                    ))
+                )}
             </ScrollView>
         </SafeAreaView>
     );
@@ -194,13 +271,13 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: Colors.background,
     },
-   header: {
+    header: {
         flexDirection: 'row',
-        alignItems: 'center', // Alinha o botão e o texto no centro
+        alignItems: 'center',
         paddingHorizontal: 20,
         paddingTop: 20,
         paddingBottom: 16,
-        gap: 12, // Dá um espaço entre a seta e o título
+        gap: 12,
     },
     backButton: {
         width: 40,
@@ -213,7 +290,7 @@ const styles = StyleSheet.create({
         borderColor: Colors.border,
     },
     headerTitle: {
-        fontSize: 28, // Diminui de 32 para 28 para encaixar melhor com o botão
+        fontSize: 28,
         fontWeight: 'bold',
         color: Colors.textPrimary,
     },
@@ -266,9 +343,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 26,
     },
-    activeTab: {
-      
-    },
     tabText: {
         fontSize: 14,
         fontWeight: '600',
@@ -280,6 +354,12 @@ const styles = StyleSheet.create({
     scrollContent: {
         paddingHorizontal: 20,
         paddingBottom: 40,
+    },
+    emptyText: {
+        fontSize: 16,
+        color: Colors.textSecondary,
+        textAlign: 'center',
+        marginTop: 40,
     },
     groupContainer: {
         marginTop: 20,
@@ -313,7 +393,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingVertical: 8,
-        borderRadius: 16, 
+        borderRadius: 16,
     },
     iconAndText: {
         flexDirection: 'row',
@@ -349,6 +429,6 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: Colors.border,
         marginVertical: 8,
-        marginLeft: 56, 
+        marginLeft: 56,
     },
 });

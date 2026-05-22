@@ -36,14 +36,28 @@ const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
 // Componente principal da tela de boas-vindas
 export default function Welcome() {
     const router = useRouter();
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
 
     useEffect(() => {
         const unsubscribe = onTransactionsChange((data) => {
-            setTransactions(data.slice(0, 5));
+            setAllTransactions(data);
         });
         return () => unsubscribe();
     }, []);
+
+    // Calcula totais de TODAS as transações para o SummaryCard
+    const totalIncome = allTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalExpense = allTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    const balance = totalIncome - totalExpense;
+
+    // Só as 5 mais recentes para mostrar na lista
+    const recentTransactions = allTransactions.slice(0, 5);
 
     return (
         <ScrollView
@@ -55,9 +69,9 @@ export default function Welcome() {
             <View style={styles.content}>
                 {/* Card de resumo financeiro */}
                 <SummaryCard
-                    totalIncome={transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0)}
-                    totalExpense={transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0)}
-                    balance={transactions.reduce((sum, t) => t.type === 'income' ? sum + t.amount : sum - t.amount, 0)}
+                    totalIncome={totalIncome}
+                    totalExpense={totalExpense}
+                    balance={balance}
                 />
                 {/* Seção de transações recentes */}
                 <View style={styles.textRow}>
@@ -68,10 +82,10 @@ export default function Welcome() {
                 </View>
                 {/* Lista de transações recentes */}
                 <View style={styles.card}>
-                    {transactions.length === 0 ? (
+                    {recentTransactions.length === 0 ? (
                         <Text style={styles.emptyText}>Nenhuma transação ainda</Text>
                     ) : (
-                        transactions.map((transaction) => {
+                        recentTransactions.map((transaction) => {
                             const config = transactionTypeConfig[transaction.type];
                             const icon = getCategoryIcon(transaction.category);
 

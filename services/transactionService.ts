@@ -10,6 +10,7 @@ import {
   getDocs,
   Timestamp,
   orderBy,
+  getDoc,
 } from 'firebase/firestore';
 import { auth, db } from './firebaseConfig';
 import { Transaction, TransactionType } from '../types/database';
@@ -161,6 +162,34 @@ export const updateTransaction = async (
   } catch (error) {
     console.error('Erro ao atualizar transação:', error);
     alert('Erro ao atualizar transação.');
+    throw error;
+  }
+};
+export const getTransactionById = async (id: string): Promise<Transaction | null> => {
+  try {
+    // Referência direta para o documento específico pelo ID
+    const docRef = doc(db, 'transactions', id);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        userId: data.userId,
+        title: data.title,
+        amount: data.amount,
+        type: data.type,
+        category: data.category,
+        date: data.date?.toDate() || new Date(),
+        notes: data.notes,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+      };
+    }
+    
+    return null; // Retorna null se a transação não for encontrada
+  } catch (error) {
+    console.error('Erro ao buscar transação específica:', error);
     throw error;
   }
 };

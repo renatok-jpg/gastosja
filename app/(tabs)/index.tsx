@@ -1,61 +1,13 @@
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
-//vou adicionar  a tela de home qeue u criei, para mostrar o resumo financeiro e as transações recentes
-// importando as cores do tema para usar na estilização
 import { Colors } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../../components/ui/header';
 import { SummaryCard } from '../../components/ui/summaryCard';
 import { useRouter } from 'expo-router';
-// exemplo de tipagem pensando em backend
-type TransactionType = 'income' | 'expense';
-
-type Transaction = {
-    id: string;
-    title: string;
-    amount: number;
-    type: TransactionType;
-    icon: keyof typeof Ionicons.glyphMap;
-};
-
-
-const transactions: Transaction[] = [
-    {
-        id: '1',
-        title: 'Salário',
-        amount: 3000,
-        type: 'income',
-        icon: 'briefcase-outline',
-    },
-    {
-        id: '2',
-        title: 'Almoço',
-        amount: 25,
-        type: 'expense',
-        icon: 'restaurant-outline',
-    },
-    {
-        id: '3',
-        title: 'Supermercado',
-        amount: 150,
-        type: 'expense',
-        icon: 'cart-outline',
-    },
-    {
-        id: '4',
-        title: 'Freelance',
-        amount: 800,
-        type: 'income',
-        icon: 'laptop-outline',
-    },
-    {
-        id: '5',
-        title: 'Presente',
-        amount: 50,
-        type: 'expense',
-        icon: 'gift-outline',
-    }
-];
+import { useState, useEffect } from 'react';
+import { onTransactionsChange } from '../../services/transactionService';
+import { Transaction } from '../../types/database';
 
 // Configuração centralizada por tipo
 const transactionTypeConfig = {
@@ -67,16 +19,34 @@ const transactionTypeConfig = {
         iconColor: Colors.expense,
         backgroundColor: Colors.iconExpense,
     },
+} as const;
+
+// Mapa de categoria para ícone
+const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
+    const map: Record<string, keyof typeof Ionicons.glyphMap> = {
+        'Alimentação': 'restaurant-outline',
+        'Transporte': 'car-outline',
+        'Saúde': 'heart-outline',
+        'Salário': 'briefcase-outline',
+        'Freelance': 'laptop-outline',
+    };
+    return map[category] || 'wallet-outline';
 };
 
 // Componente principal da tela de boas-vindas
 export default function Welcome() {
     const router = useRouter();
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+    useEffect(() => {
+        const unsubscribe = onTransactionsChange((data) => {
+            setTransactions(data.slice(0, 5));
+        });
+        return () => unsubscribe();
+    }, []);
 
     return (
-
         <ScrollView
-            
             style={styles.container}
             contentContainerStyle={styles.contentContainer}
         >
@@ -88,69 +58,68 @@ export default function Welcome() {
                 {/* Seção de transações recentes */}
                 <View style={styles.textRow}>
                     <Text style={styles.title}>Transações Recentes</Text>
-                  
                     <Text style={styles.subtitle} onPress={() => router.push('/transactions')}>
                         Mostrar Tudo
                     </Text>
                 </View>
                 {/* Lista de transações recentes */}
-
                 <View style={styles.card}>
-                    {transactions.map((transaction) => {
-                        const config = transactionTypeConfig[transaction.type];
+                    {transactions.length === 0 ? (
+                        <Text style={styles.emptyText}>Nenhuma transação ainda</Text>
+                    ) : (
+                        transactions.map((transaction) => {
+                            const config = transactionTypeConfig[transaction.type];
+                            const icon = getCategoryIcon(transaction.category);
 
-                        return (
-                            <Pressable
-                                key={transaction.id}
-                                onPress={() => {
-                                    console.log('Transação clicada:', transaction);
-                                    // Futuramente:
-                                    // router.push(`/transaction/${transaction.id}`);
-                                }}
-                                style={({ pressed }) => [
-                                    styles.transactionRow,
-                                    pressed && {
-                                        opacity: 0.7,
-                                        backgroundColor: Colors.cardHover,
-                                        borderRadius: 24,
-                                    },
-                                ]}
-                            >
-                                <View style={styles.iconAndText}>
-                                    <View
-                                        style={[
-                                            styles.iconContainer,
-                                            { backgroundColor: config.backgroundColor },
-                                        ]}
-                                    >
-                                        <Ionicons
-                                            name={transaction.icon}
-                                            size={20}
-                                            color={config.iconColor}
-                                        />
+                            return (
+                                <Pressable
+                                    key={transaction.id}
+                                    onPress={() => {
+                                        console.log('Transação clicada:', transaction);
+                                    }}
+                                    style={({ pressed }) => [
+                                        styles.transactionRow,
+                                        pressed && {
+                                            opacity: 0.7,
+                                            backgroundColor: Colors.cardHover,
+                                            borderRadius: 24,
+                                        },
+                                    ]}
+                                >
+                                    <View style={styles.iconAndText}>
+                                        <View
+                                            style={[
+                                                styles.iconContainer,
+                                                { backgroundColor: config.backgroundColor },
+                                            ]}
+                                        >
+                                            <Ionicons
+                                                name={icon}
+                                                size={20}
+                                                color={config.iconColor}
+                                            />
+                                        </View>
+
+                                        <View style={styles.textContainer}>
+                                            <Text style={styles.title}>{transaction.title}</Text>
+                                            <Text style={styles.subtitle}>
+                                                {transaction.type === 'income' ? 'Receita' : 'Despesa'}
+                                            </Text>
+                                        </View>
                                     </View>
 
-                                    <View style={styles.textContainer}>
-                                        <Text style={styles.title}>{transaction.title}</Text>
-                                        <Text style={styles.subtitle}>
-                                            {transaction.type === 'income' ? 'Receita' : 'Despesa'}
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                <Text style={styles.transactionAmount}>
-                                    R$ {transaction.amount.toFixed(2).replace('.', ',')}
-                                </Text>
-                            </Pressable>
-                        );
-                    })}
+                                    <Text style={styles.transactionAmount}>
+                                        R$ {transaction.amount.toFixed(2).replace('.', ',')}
+                                    </Text>
+                                </Pressable>
+                            );
+                        })
+                    )}
                 </View>
             </View>
-            
-        </ScrollView >
+        </ScrollView>
     );
 }
-
 
 const styles = StyleSheet.create({
     container: {
@@ -169,14 +138,12 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-start',
         paddingBottom: 20,
     },
-
     content: {
         width: '100%',
         paddingHorizontal: 10,
         paddingTop: 10,
         alignItems: 'flex-start',
     },
-
     textRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -186,7 +153,6 @@ const styles = StyleSheet.create({
         marginTop: 25,
         marginBottom: 10,
     },
-
     card: {
         backgroundColor: Colors.card,
         width: '100%',
@@ -201,7 +167,6 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: Colors.border,
     },
-
     cardContent: {
         flexDirection: 'column',
         justifyContent: 'space-between',
@@ -217,9 +182,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingVertical: 12,
         paddingHorizontal: 8,
-
     },
-
     iconContainer: {
         width: 40,
         height: 40,
@@ -229,7 +192,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginRight: 0,
     },
-
     title: {
         fontSize: 16,
         color: Colors.white,
@@ -237,19 +199,24 @@ const styles = StyleSheet.create({
         padding: 0,
         fontWeight: '600',
     },
-
     subtitle: {
         fontSize: 14,
         color: Colors.textSecondary,
         marginVertical: 0,
         padding: 0,
-        flexShrink: 0, // não deixa quebrar linha
-        lineHeight: 18, // maior que o fontSize
+        flexShrink: 0,
+        lineHeight: 18,
     },
     transactionAmount: {
         fontSize: 16,
         fontWeight: '600',
         color: Colors.white,
         textAlign: 'right',
+    },
+    emptyText: {
+        fontSize: 14,
+        color: Colors.textSecondary,
+        textAlign: 'center',
+        paddingVertical: 20,
     },
 });

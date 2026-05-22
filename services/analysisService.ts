@@ -105,7 +105,8 @@ export const getCategoryExpenses = (transactions: Transaction[]) => {
     'Transporte': '#3B82F6',
     'Saúde': '#EF4444',
     'Lazer': '#8B5CF6',
-    'Assinaturas': '#14B8A6',
+    'Trabalho': '#14B8A6',
+    'Freelance': '#F59E0B',
     'Outros': '#6B7280',
   };
 

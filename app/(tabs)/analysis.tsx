@@ -3,11 +3,12 @@ import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
 import { useRouter } from 'expo-router';
-import { 
-  onTransactionsChange, 
-  calculateMetrics, 
-  getCategoryExpenses, 
-  getMonthlyChartData 
+import DonutChart from '../../components/ui/donutChart'
+import {
+  onTransactionsChange,
+  calculateMetrics,
+  getCategoryExpenses,
+  getMonthlyChartData
 } from '../../services/analysisService';
 
 export default function AnalysisScreen() {
@@ -23,14 +24,18 @@ export default function AnalysisScreen() {
     return () => unsubscribe();
   }, []);
 
-  // Calcula tudo
   const metrics = calculateMetrics(transactions);
   const categoryExpenses = getCategoryExpenses(transactions);
   const barChartData = getMonthlyChartData(transactions);
 
-  // Categoria principal para o donut
-  const topCategory = categoryExpenses[0] || { name: 'Nenhuma', amount: 0, color: Colors.textSecondary, percentage: 0 };
   const totalExpenses = categoryExpenses.reduce((s, c) => s + c.amount, 0);
+  const topCategory = categoryExpenses[0];
+
+  // Dados pro donut
+  const donutData = categoryExpenses.map(c => ({
+    color: c.color,
+    percentage: c.percentage,
+  }));
 
   if (loading) {
     return (
@@ -45,7 +50,7 @@ export default function AnalysisScreen() {
 
   return (
     <View style={styles.mainContainer}>
-      <ScrollView 
+      <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
@@ -82,7 +87,7 @@ export default function AnalysisScreen() {
             </View>
             <Text style={[styles.miniCardLabel, { color: '#E0EBFF' }]}>Receitas mês</Text>
             <Text style={styles.miniCardValue}>
-              R$ {(metrics.monthlyIncome.amount / 1000).toFixed(1)}k
+              R$ {metrics.monthlyIncome.amount.toFixed(2).replace('.', ',')}
             </Text>
             <Text style={[styles.miniCardSub, { color: '#E0EBFF' }]}>
               {metrics.monthlyIncome.amount > 0 ? 'Este mês' : 'Sem receitas'}
@@ -95,9 +100,9 @@ export default function AnalysisScreen() {
             </View>
             <Text style={styles.miniCardLabel}>Taxa de poupança</Text>
             <Text style={styles.miniCardValue}>{metrics.savingsRate}%</Text>
-            <Text style={[styles.miniCardSub, { 
-              color: metrics.savingsRate > 50 ? '#4CD964' : metrics.savingsRate > 20 ? '#FACC15' : '#EF4444', 
-              fontWeight: '600' 
+            <Text style={[styles.miniCardSub, {
+              color: metrics.savingsRate > 50 ? '#4CD964' : metrics.savingsRate > 20 ? '#FACC15' : '#EF4444',
+              fontWeight: '600'
             }]}>
               {metrics.savingsRate > 50 ? 'Excelente!' : metrics.savingsRate > 20 ? 'Bom' : 'Atenção!'}
             </Text>
@@ -110,18 +115,17 @@ export default function AnalysisScreen() {
           <Text style={styles.cardSubtitle}>
             Total: R$ {totalExpenses.toFixed(2).replace('.', ',')} este mês
           </Text>
-          
+
           <View style={styles.chartPlaceholderContainer}>
-            <View style={[styles.mockDonutChart, { borderColor: topCategory.color }]}>
-              <View style={styles.mockDonutInner}>
-                <Text style={{ color: Colors.white, fontWeight: 'bold', fontSize: 16 }}>
-                  {topCategory.percentage}%
-                </Text>
-                <Text style={{ color: Colors.textSecondary, fontSize: 11, marginTop: 2 }}>
-                  {topCategory.name}
-                </Text>
-              </View>
-            </View>
+            <DonutChart
+              data={categoryExpenses.map(c => ({
+                value: c.amount,
+                color: c.color,
+              }))}
+              size={150}
+              centerText={topCategory ? `${topCategory.percentage}%` : '0%'}
+              centerSubtext={topCategory ? topCategory.name : 'Nenhuma'}
+            />
           </View>
 
           <View style={styles.legendGrid}>
@@ -166,7 +170,7 @@ export default function AnalysisScreen() {
               ))}
             </View>
           </View>
-          
+
           <View style={styles.chartLegend}>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />
@@ -182,8 +186,7 @@ export default function AnalysisScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* FAB */}
-      <Pressable 
+      <Pressable
         style={({ pressed }) => [styles.fab, pressed && { opacity: 0.8 }]}
         onPress={() => router.push('/add')}
       >
@@ -194,14 +197,14 @@ export default function AnalysisScreen() {
 }
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 36) / 2; 
+const CARD_WIDTH = (width - 36) / 2;
 
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: Colors.background },
   container: { flex: 1 },
   contentContainer: { paddingHorizontal: 12, paddingTop: 20, paddingBottom: 20 },
   headerTitle: { fontSize: 28, fontWeight: '700', color: Colors.white, marginBottom: 20, paddingHorizontal: 4 },
-  
+
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%' },
   miniCard: { width: CARD_WIDTH, borderRadius: 20, padding: 16, marginBottom: 12, height: 140, justifyContent: 'space-between' },
   iconContainerBg: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center' },
@@ -215,8 +218,6 @@ const styles = StyleSheet.create({
   cardSubtitle: { fontSize: 14, color: Colors.textSecondary, marginBottom: 20 },
 
   chartPlaceholderContainer: { alignItems: 'center', justifyContent: 'center', marginVertical: 20 },
-  mockDonutChart: { width: 140, height: 140, borderRadius: 70, borderWidth: 24, justifyContent: 'center', alignItems: 'center' },
-  mockDonutInner: { width: 92, height: 92, borderRadius: 46, backgroundColor: Colors.card, justifyContent: 'center', alignItems: 'center' },
   legendGrid: { marginTop: 10 },
   legendRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
   legendLeft: { flexDirection: 'row', alignItems: 'center' },
@@ -233,7 +234,7 @@ const styles = StyleSheet.create({
   barReceita: { backgroundColor: '#3B82F6' },
   barDespesa: { backgroundColor: '#EF4444' },
   axisText: { fontSize: 12, color: Colors.textSecondary, marginTop: 10, position: 'absolute', bottom: 0 },
-  
+
   chartLegend: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 16 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },

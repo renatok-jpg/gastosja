@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Pressable, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Pressable, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
@@ -22,6 +22,20 @@ export default function MetasScreen() {
   // Estados do Modal para Excluir Meta
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
+
+  // Estados do Modal de Alerta
+  const [alertModalVisible, setAlertModalVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState<'info' | 'error' | 'success'>('info');
+
+  // Função para abrir modal de alerta
+  const showAlert = (title: string, message: string, type: 'info' | 'error' | 'success' = 'info') => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertType(type);
+    setAlertModalVisible(true);
+  };
 
   // Escuta as mudanças no banco de dados em tempo real
   useEffect(() => {
@@ -53,7 +67,7 @@ export default function MetasScreen() {
   // Abre o modal de inserção de valor (com trava caso já esteja concluída)
   const openAddModal = (goal: Goal) => {
     if (goal.currentAmount >= goal.targetAmount) {
-      Alert.alert('Meta Concluída!', 'Esta meta já atingiu o valor máximo. Não é possível adicionar mais dinheiro.');
+      showAlert('Meta Concluída!', 'Esta meta já atingiu o valor máximo. Não é possível adicionar mais dinheiro.', 'info');
       return;
     }
     setSelectedGoal(goal);
@@ -68,7 +82,7 @@ export default function MetasScreen() {
     // Converte vírgula em ponto para aceitar decimais
     const num = parseFloat(inputValue.replace(',', '.'));
     if (isNaN(num) || num <= 0) {
-      Alert.alert('Aviso', 'Por favor, introduz um valor válido maior que zero.');
+      showAlert('Aviso', 'Por favor, introduz um valor válido maior que zero.', 'info');
       return;
     }
 
@@ -77,9 +91,10 @@ export default function MetasScreen() {
     // REGRA DE SEGURANÇA: impede ultrapassar o valor máximo estabelecido
     if (newAmount > selectedGoal.targetAmount) {
       const limiteDisponivel = selectedGoal.targetAmount - selectedGoal.currentAmount;
-      Alert.alert(
+      showAlert(
         'Valor ultrapassa o limite',
-        `Faltam apenas R$ ${limiteDisponivel.toFixed(2).replace('.', ',')} para atingir o objetivo. Insira um valor menor ou igual.`
+        `Faltam apenas R$ ${limiteDisponivel.toFixed(2).replace('.', ',')} para atingir o objetivo. Insira um valor menor ou igual.`,
+        'info'
       );
       return;
     }
@@ -87,13 +102,12 @@ export default function MetasScreen() {
     try {
       await updateGoal(selectedGoal.id, { currentAmount: newAmount });
       setModalVisible(false);
-      Alert.alert('Sucesso!', `Adicionado R$ ${num.toFixed(2).replace('.', ',')} à meta.`);
+      showAlert('Sucesso!', `Adicionado R$ ${num.toFixed(2).replace('.', ',')} à meta.`, 'success');
     } catch (err: any) {
-      Alert.alert('Erro ao atualizar', err.message);
+      showAlert('Erro ao atualizar', err.message, 'error');
     }
   };
 
-  // Botão de deletar funcionando e integrado
   // Abre o modal de exclusão
   const handleDelete = (goal: Goal) => {
     setGoalToDelete(goal);
@@ -110,11 +124,9 @@ export default function MetasScreen() {
 
     try {
       await deleteGoal(goalToDelete.id);
+      showAlert('Sucesso!', 'Meta eliminada com sucesso.', 'success');
     } catch (err: any) {
-      Alert.alert(
-        'Erro ao eliminar',
-        err.message || 'Ocorreu um erro ao eliminar a meta.'
-      );
+      showAlert('Erro ao eliminar', err.message || 'Ocorreu um erro ao eliminar a meta.', 'error');
     } finally {
       setGoalToDelete(null);
       setDeleteModalVisible(false);
@@ -290,6 +302,7 @@ export default function MetasScreen() {
           </View>
         </View>
       </Modal>
+
       {/* MODAL PARA CONFIRMAR EXCLUSÃO */}
       <Modal
         transparent
@@ -299,43 +312,51 @@ export default function MetasScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              Confirmar exclusão
-            </Text>
-
+            <Text style={styles.modalTitle}>Confirmar exclusão</Text>
             <Text style={styles.modalSubtitle}>
-              Tens a certeza que desejas eliminar a meta "
-              {goalToDelete?.title}"?
-              Esta ação não pode ser desfeita.
+              Tens a certeza que desejas eliminar a meta "{goalToDelete?.title}"? Esta ação não pode ser desfeita.
             </Text>
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalButtonCancel}
-                onPress={handleCancelDelete}
-              >
-                <Text style={styles.modalButtonCancelText}>
-                  Cancelar
-                </Text>
+              <TouchableOpacity style={styles.modalButtonCancel} onPress={handleCancelDelete}>
+                <Text style={styles.modalButtonCancelText}>Cancelar</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={[
-                  styles.modalButtonConfirm,
-                  { backgroundColor: Colors.expense }
-                ]}
+                style={[styles.modalButtonConfirm, { backgroundColor: Colors.expense }]}
                 onPress={confirmDeleteGoal}
               >
-                <Text style={styles.modalButtonConfirmText}>
-                  Eliminar
-                </Text>
+                <Text style={styles.modalButtonConfirmText}>Eliminar</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
+      {/* MODAL DE ALERTA GENÉRICO */}
+      <Modal
+        transparent
+        visible={alertModalVisible}
+        animationType="fade"
+        onRequestClose={() => setAlertModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.alertIconContainer}>
+              {alertType === 'success' && <Feather name="check-circle" size={32} color={Colors.primary} />}
+              {alertType === 'error' && <Feather name="alert-circle" size={32} color={Colors.expense} />}
+              {alertType === 'info' && <Feather name="info" size={32} color={Colors.primary} />}
+            </View>
+            <Text style={styles.modalTitle}>{alertTitle}</Text>
+            <Text style={styles.modalSubtitle}>{alertMessage}</Text>
 
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalButtonConfirm} onPress={() => setAlertModalVisible(false)}>
+                <Text style={styles.modalButtonConfirmText}>Entendido</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -394,12 +415,13 @@ const styles = StyleSheet.create({
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   modalContent: { backgroundColor: Colors.card, width: '100%', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: Colors.border },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: Colors.white, marginBottom: 8 },
-  modalSubtitle: { fontSize: 14, color: Colors.textSecondary, marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: Colors.white, marginBottom: 8, textAlign: 'center' },
+  modalSubtitle: { fontSize: 14, color: Colors.textSecondary, marginBottom: 20, textAlign: 'center' },
   modalInput: { backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, color: Colors.white, padding: 16, fontSize: 16, marginBottom: 24 },
   modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
   modalButtonCancel: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12 },
   modalButtonCancelText: { color: Colors.textSecondary, fontSize: 16, fontWeight: '600' },
   modalButtonConfirm: { backgroundColor: Colors.primary, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12 },
   modalButtonConfirmText: { color: Colors.background, fontSize: 16, fontWeight: 'bold' },
+  alertIconContainer: { alignItems: 'center', marginBottom: 16 },
 });

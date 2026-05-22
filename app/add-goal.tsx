@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, Modal } from 'react-native';
 import { Colors } from '../constants/theme';
 import { addGoal } from '../services/goalService';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 
 export default function AddGoal() {
   const router = useRouter();
@@ -12,9 +12,37 @@ export default function AddGoal() {
   const [currentAmount, setCurrentAmount] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Estados do Modal de Alerta
+  const [alertModalVisible, setAlertModalVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState<'info' | 'error' | 'success'>('info');
+  const [alertAction, setAlertAction] = useState<(() => void) | null>(null);
+
+  // Função para abrir modal de alerta
+  const showAlert = (
+    title: string,
+    message: string,
+    type: 'info' | 'error' | 'success' = 'info',
+    action?: () => void
+  ) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertType(type);
+    setAlertAction(() => action || null);
+    setAlertModalVisible(true);
+  };
+
+  const handleAlertConfirm = () => {
+    setAlertModalVisible(false);
+    if (alertAction) {
+      alertAction();
+    }
+  };
+
   const handleSave = async () => {
     if (!title || !targetAmount) {
-      alert('Preencha título e valor da meta');
+      showAlert('Campos obrigatórios', 'Preencha o título e o valor da meta', 'info');
       return;
     }
 
@@ -22,7 +50,12 @@ export default function AddGoal() {
     const current = parseFloat(currentAmount.replace(',', '.')) || 0;
 
     if (isNaN(target) || target <= 0) {
-      alert('Valor da meta inválido');
+      showAlert('Valor inválido', 'O valor da meta deve ser maior que zero', 'error');
+      return;
+    }
+
+    if (current > target) {
+      showAlert('Aviso', 'O valor atual não pode ser maior que o valor da meta', 'info');
       return;
     }
 
@@ -35,10 +68,11 @@ export default function AddGoal() {
         deadline: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
         icon: 'life-buoy',
       });
-      alert('Meta criada com sucesso!');
-      router.back();
+      showAlert('Sucesso!', 'Meta criada com sucesso!', 'success', () => {
+        router.back();
+      });
     } catch (err: any) {
-      alert('Erro: ' + err.message);
+      showAlert('Erro ao criar', err.message || 'Ocorreu um erro ao criar a meta', 'error');
     } finally {
       setLoading(false);
     }
@@ -103,7 +137,7 @@ export default function AddGoal() {
       <View style={styles.infoCard}>
         <Ionicons name="bulb-outline" size={20} color={Colors.primary} style={{ marginRight: 10 }} />
         <Text style={styles.infoText}>
-           Você pode adicionar valores à meta a qualquer momento pela tela de Metas.
+          Você pode adicionar valores à meta a qualquer momento pela tela de Metas.
         </Text>
       </View>
 
@@ -118,6 +152,32 @@ export default function AddGoal() {
           {loading ? 'Criando meta...' : 'Criar Meta'}
         </Text>
       </Pressable>
+
+      {/* MODAL DE ALERTA GENÉRICO */}
+      <Modal
+        transparent
+        visible={alertModalVisible}
+        animationType="fade"
+        onRequestClose={() => setAlertModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.alertIconContainer}>
+              {alertType === 'success' && <Feather name="check-circle" size={32} color={Colors.primary} />}
+              {alertType === 'error' && <Feather name="alert-circle" size={32} color={Colors.expense} />}
+              {alertType === 'info' && <Feather name="info" size={32} color={Colors.primary} />}
+            </View>
+            <Text style={styles.modalTitle}>{alertTitle}</Text>
+            <Text style={styles.modalSubtitle}>{alertMessage}</Text>
+
+            <View style={styles.modalButtons}>
+              <Pressable style={styles.modalButtonConfirm} onPress={handleAlertConfirm}>
+                <Text style={styles.modalButtonConfirmText}>Entendido</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -221,4 +281,13 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     fontWeight: 'bold' 
   },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalContent: { backgroundColor: Colors.card, width: '100%', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: Colors.border },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: Colors.white, marginBottom: 8, textAlign: 'center' },
+  modalSubtitle: { fontSize: 14, color: Colors.textSecondary, marginBottom: 20, textAlign: 'center' },
+  modalButtons: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
+  modalButtonConfirm: { backgroundColor: Colors.primary, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12 },
+  modalButtonConfirmText: { color: Colors.background, fontSize: 16, fontWeight: 'bold' },
+  alertIconContainer: { alignItems: 'center', marginBottom: 16 },
 });

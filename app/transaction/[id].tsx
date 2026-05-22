@@ -161,19 +161,11 @@ export default function TransactionDetails() {
                 {/* Botões de Ação */}
                 <View style={styles.actionButtons}>
                     <Pressable 
-                        style={styles.editButton} 
-                        onPress={() => console.log('Edição ignorada por enquanto')} 
-                    >
-                        <Ionicons name="pencil" size={20} color={Colors.white} />
-                        <Text style={styles.editButtonText}>Editar</Text>
-                    </Pressable>
-
-                    <Pressable 
                         style={styles.deleteButton} 
-                        onPress={() => setShowDeleteModal(true)} // Abre o nosso Modal ao invés do Alert
+                        onPress={() => setShowDeleteModal(true)}
                     >
                         <Ionicons name="trash-outline" size={20} color={Colors.destructive} />
-                        <Text style={styles.deleteButtonText}>Excluir</Text>
+                        <Text style={styles.deleteButtonText}>Excluir Transação</Text>
                     </Pressable>
                 </View>
             </ScrollView>
@@ -328,25 +320,6 @@ const styles = StyleSheet.create({
     },
     actionButtons: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 16,
-    },
-    editButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: Colors.card,
-        paddingVertical: 16,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: Colors.border,
-        gap: 8,
-    },
-    editButtonText: {
-        color: Colors.white,
-        fontSize: 16,
-        fontWeight: 'bold',
     },
     deleteButton: {
         flex: 1,
@@ -369,8 +342,6 @@ const styles = StyleSheet.create({
         color: Colors.destructive,
         fontSize: 16,
     },
-
-    /* --- ESTILOS DO NOVO MODAL --- */
     modalBackdrop: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
